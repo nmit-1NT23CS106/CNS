@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CyberTwin — Register</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#030712; --panel:#0d1117; --border:#1f6feb;
+    --accent:#00d4ff; --accent2:#39ff14; --danger:#ff3131;
+    --text:#e6edf3; --muted:#8b949e;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.03)1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03)1px,transparent 1px);background-size:40px 40px;animation:gridMove 20s linear infinite;}
+  @keyframes gridMove{to{background-position:40px 40px;}}
+  .container{position:relative;z-index:10;width:420px;}
+  .title{font-size:36px;font-weight:700;color:var(--text);letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:8px;}
+  .title span{color:var(--accent);}
+  .sub{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);text-align:center;margin-bottom:28px;letter-spacing:2px;}
+  .panel{background:var(--panel);border:1px solid rgba(31,111,235,0.4);border-radius:4px;padding:36px;position:relative;box-shadow:0 0 20px rgba(0,212,255,0.15);}
+  .panel::before{content:'';position:absolute;top:-1px;left:20px;right:20px;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);}
+  .field{margin-bottom:20px;}
+  label{display:block;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;}
+  input{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(31,111,235,0.3);border-radius:2px;padding:12px 16px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:14px;outline:none;transition:all 0.3s;}
+  input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,212,255,0.1);}
+  input::placeholder{color:rgba(139,148,158,0.5);}
+  .btn{width:100%;padding:14px;background:linear-gradient(135deg,#0d4f8c,#1a6fc4);border:1px solid var(--border);border-radius:2px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;letter-spacing:4px;text-transform:uppercase;cursor:pointer;transition:all 0.3s;margin-top:8px;}
+  .btn:hover{box-shadow:0 0 30px rgba(0,212,255,0.4);transform:translateY(-1px);}
+  .error{background:rgba(255,49,49,0.1);border:1px solid rgba(255,49,49,0.4);color:var(--danger);padding:10px 14px;border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:12px;margin-bottom:16px;}
+  .footer-links{text-align:center;margin-top:24px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);}
+  .footer-links a{color:var(--accent);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title">CYBER<span>TWIN</span></div>
+  <div class="sub">Register New Identity</div>
+  <div class="panel">
+    {% if error %}<div class="error">⚠ {{ error }}</div>{% endif %}
+    <form action="/signup" method="POST">
+      <div class="field">
+        <label>Choose Username</label>
+        <input type="text" name="username" placeholder="your_username" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Set Password</label>
+        <input type="password" name="password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn">Register →</button>
+    </form>
+    <div class="footer-links">Already registered? <a href="/">Login</a></div>
+  </div>
+</div>
+</body>
+</html>

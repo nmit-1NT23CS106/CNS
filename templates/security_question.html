@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CyberTwin — Emergency Verification</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#030712;--panel:#0d1117;--danger:#ff3131;--warn:#f59e0b;--accent:#00d4ff;--text:#e6edf3;--muted:#8b949e;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,49,49,0.03)1px,transparent 1px),linear-gradient(90deg,rgba(255,49,49,0.03)1px,transparent 1px);background-size:40px 40px;}
+  .container{position:relative;z-index:10;width:460px;}
+  .panel{background:var(--panel);border:1px solid rgba(255,49,49,0.5);border-radius:4px;padding:36px;box-shadow:0 0 60px rgba(255,49,49,0.15);}
+
+  .header{text-align:center;margin-bottom:28px;}
+  .icon{font-size:52px;margin-bottom:12px;}
+  .title{font-size:26px;font-weight:700;color:var(--danger);letter-spacing:3px;text-transform:uppercase;}
+  .sub{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);margin-top:6px;letter-spacing:1px;}
+
+  .risk-bar-wrap{background:rgba(0,0,0,0.4);border-radius:3px;height:8px;margin:16px 0;overflow:hidden;}
+  .risk-bar{height:100%;background:linear-gradient(90deg,#f59e0b,#ff3131);border-radius:3px;transition:width 1s ease;}
+
+  .factors{background:rgba(255,49,49,0.05);border:1px solid rgba(255,49,49,0.2);border-radius:3px;padding:14px;margin-bottom:24px;}
+  .factor-title{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--danger);letter-spacing:3px;margin-bottom:10px;}
+  .factor{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+  .factor:last-child{border:none;}
+
+  .sq-box{background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.3);border-radius:3px;padding:20px;margin-bottom:20px;}
+  .sq-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--warn);letter-spacing:3px;margin-bottom:8px;}
+  .sq-question{font-size:18px;font-weight:600;color:var(--text);}
+
+  label{display:block;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;}
+  input{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(245,158,11,0.3);border-radius:2px;padding:12px 16px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:14px;outline:none;transition:0.3s;margin-bottom:16px;}
+  input:focus{border-color:var(--warn);box-shadow:0 0 15px rgba(245,158,11,0.2);}
+
+  .btn{width:100%;padding:14px;background:linear-gradient(135deg,#7c2d00,#c2410c);border:1px solid var(--danger);border-radius:2px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;letter-spacing:4px;text-transform:uppercase;cursor:pointer;transition:0.3s;}
+  .btn:hover{box-shadow:0 0 30px rgba(255,49,49,0.4);}
+  .error{background:rgba(255,49,49,0.1);border:1px solid rgba(255,49,49,0.4);color:var(--danger);padding:10px;border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:12px;margin-bottom:16px;text-align:center;}
+  .hint{font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(139,148,158,0.5);text-align:center;margin-top:12px;}
+  .back{text-align:center;margin-top:16px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);}
+  .back a{color:var(--accent);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="panel">
+    <div class="header">
+      <div class="icon">🚨</div>
+      <div class="title">Access Blocked</div>
+      <div class="sub">High-risk login detected for {{ username }} — Emergency 2FA required</div>
+    </div>
+
+    <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--danger);text-align:center;margin-bottom:8px;">RISK SCORE: {{ risk }}%</div>
+    <div class="risk-bar-wrap">
+      <div class="risk-bar" id="rb" style="width:0%"></div>
+    </div>
+
+    <div class="factors">
+      <div class="factor-title">▸ THREATS DETECTED</div>
+      {% for f in factors %}
+      <div class="factor">⚠ {{ f }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="sq-box">
+      <div class="sq-label">▸ EMERGENCY SECURITY QUESTION</div>
+      <div class="sq-question">{{ question }}</div>
+    </div>
+
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+    <form action="/verify_security" method="POST">
+      <label>Your Answer</label>
+      <input type="text" name="answer" placeholder="type your answer..." required autocomplete="off">
+      <button type="submit" class="btn">Verify Emergency Access →</button>
+    </form>
+
+    <div class="hint">Answer is case-insensitive. For demo: alice→"fluffy" | bob→"sharma"</div>
+    <div class="back"><a href="/">← Back to Login</a></div>
+  </div>
+</div>
+<script>
+setTimeout(()=>{ document.getElementById('rb').style.width='{{ risk }}%'; }, 300);
+</script>
+</body>
+</html>

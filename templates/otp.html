@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CyberTwin — OTP Verification</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#030712;--panel:#0d1117;--border:#1f6feb;--accent:#00d4ff;--warn:#f59e0b;--danger:#ff3131;--text:#e6edf3;--muted:#8b949e;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(245,158,11,0.03)1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.03)1px,transparent 1px);background-size:40px 40px;}
+  .container{position:relative;z-index:10;width:440px;}
+  .panel{background:var(--panel);border:1px solid rgba(245,158,11,0.5);border-radius:4px;padding:36px;box-shadow:0 0 40px rgba(245,158,11,0.2);}
+  .panel::before{content:'';position:absolute;top:-1px;left:20px;right:20px;height:1px;background:linear-gradient(90deg,transparent,var(--warn),transparent);}
+
+  .alert-header{text-align:center;margin-bottom:28px;}
+  .alert-icon{font-size:48px;margin-bottom:12px;animation:shake 0.5s ease-in-out 0s 3;}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  .alert-title{font-size:28px;font-weight:700;color:var(--warn);letter-spacing:3px;text-transform:uppercase;}
+  .alert-sub{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);margin-top:6px;letter-spacing:2px;}
+
+  .risk-display{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:3px;padding:16px;margin-bottom:24px;text-align:center;}
+  .risk-label{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:3px;margin-bottom:6px;}
+  .risk-val{font-size:48px;font-weight:700;color:var(--warn);font-family:'Share Tech Mono',monospace;}
+  .risk-bar-wrap{background:rgba(0,0,0,0.3);border-radius:2px;height:6px;margin-top:10px;overflow:hidden;}
+  .risk-bar{height:100%;background:linear-gradient(90deg,#39ff14,#f59e0b,#ff3131);border-radius:2px;transition:width 1s ease;}
+
+  .otp-reveal{background:rgba(0,0,0,0.5);border:2px dashed rgba(245,158,11,0.4);border-radius:3px;padding:16px;margin-bottom:24px;text-align:center;}
+  .otp-reveal-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:3px;margin-bottom:8px;}
+  .otp-code{font-family:'Share Tech Mono',monospace;font-size:36px;color:var(--warn);letter-spacing:12px;font-weight:bold;}
+  .otp-note{font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(139,148,158,0.6);margin-top:6px;}
+
+  .field{margin-bottom:16px;}
+  label{display:block;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;}
+  .otp-inputs{display:flex;gap:8px;justify-content:center;}
+  .otp-digit{width:56px;height:64px;background:rgba(0,0,0,0.4);border:1px solid rgba(245,158,11,0.3);border-radius:4px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:28px;color:var(--text);outline:none;transition:0.3s;}
+  .otp-digit:focus{border-color:var(--warn);box-shadow:0 0 15px rgba(245,158,11,0.3);}
+
+  .btn{width:100%;padding:14px;background:linear-gradient(135deg,#7c4a00,#d97706);border:1px solid var(--warn);border-radius:2px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;letter-spacing:4px;text-transform:uppercase;cursor:pointer;transition:all 0.3s;margin-top:8px;}
+  .btn:hover{box-shadow:0 0 30px rgba(245,158,11,0.5);transform:translateY(-1px);}
+  .error{background:rgba(255,49,49,0.1);border:1px solid rgba(255,49,49,0.4);color:var(--danger);padding:10px 14px;border-radius:2px;font-family:'Share Tech Mono',monospace;font-size:12px;margin-bottom:16px;text-align:center;}
+  .back{text-align:center;margin-top:16px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);}
+  .back a{color:var(--accent);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="panel">
+    <div class="alert-header">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-title">Anomaly Detected</div>
+      <div class="alert-sub">Step-up authentication required for {{ username }}</div>
+    </div>
+
+    <div class="risk-display">
+      <div class="risk-label">RISK SCORE</div>
+      <div class="risk-val">{{ risk }}%</div>
+      <div class="risk-bar-wrap">
+        <div class="risk-bar" id="rbar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="otp-reveal">
+      <div class="otp-reveal-label">▸ ONE-TIME PASSWORD (DEMO MODE)</div>
+      <div class="otp-code">{{ otp }}</div>
+      <div class="otp-note">In production this would be sent via SMS/Email</div>
+    </div>
+
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+    <form action="/verify_otp" method="POST">
+      <div class="field">
+        <label>Enter OTP Code</label>
+        <div class="otp-inputs">
+          <input class="otp-digit" maxlength="1" id="d1">
+          <input class="otp-digit" maxlength="1" id="d2">
+          <input class="otp-digit" maxlength="1" id="d3">
+          <input class="otp-digit" maxlength="1" id="d4">
+        </div>
+        <input type="hidden" name="otp" id="otpHidden">
+      </div>
+      <button type="submit" class="btn" onclick="combineOTP()">Verify Identity →</button>
+    </form>
+
+    <div class="back"><a href="/">← Back to Login</a></div>
+  </div>
+</div>
+
+<script>
+// Animate risk bar
+setTimeout(()=>{ document.getElementById('rbar').style.width='{{ risk }}%'; }, 300);
+
+// OTP digit navigation
+const digits = ['d1','d2','d3','d4'];
+digits.forEach((id,i)=>{
+  const el = document.getElementById(id);
+  el.addEventListener('input', ()=>{
+    if(el.value && i<3) document.getElementById(digits[i+1]).focus();
+  });
+  el.addEventListener('keydown', e=>{
+    if(e.key==='Backspace' && !el.value && i>0) document.getElementById(digits[i-1]).focus();
+  });
+});
+document.getElementById('d1').focus();
+
+function combineOTP(){
+  const val = digits.map(id=>document.getElementById(id).value).join('');
+  document.getElementById('otpHidden').value = val;
+}
+</script>
+</body>
+</html>

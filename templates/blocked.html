@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CyberTwin — Access Blocked</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#030712;--panel:#0d1117;--danger:#ff3131;--accent:#00d4ff;--text:#e6edf3;--muted:#8b949e;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;}
+  .container{width:440px;}
+  .panel{background:var(--panel);border:1px solid rgba(255,49,49,0.5);border-radius:4px;padding:36px;text-align:center;}
+  .icon{font-size:48px;margin-bottom:12px;}
+  .title{font-size:24px;font-weight:700;color:var(--danger);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+  .sub{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:20px;}
+  .risk{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--danger);margin-bottom:16px;}
+  .factors{text-align:left;background:rgba(255,49,49,0.05);border:1px solid rgba(255,49,49,0.2);border-radius:3px;padding:14px;margin-bottom:20px;}
+  .factor{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);padding:4px 0;}
+  .back a{color:var(--accent);text-decoration:none;font-family:'Share Tech Mono',monospace;font-size:12px;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="panel">
+    <div class="icon">🚫</div>
+    <div class="title">Access Blocked</div>
+    <div class="sub">Login for <strong>{{ username }}</strong> was blocked due to high-risk behavior.</div>
+    <div class="risk">RISK SCORE: {{ risk }}%</div>
+    <div class="factors">
+      {% for f in factors %}<div class="factor">⚠ {{ f }}</div>{% endfor %}
+    </div>
+    <div class="sub">No security question is on file for this account. Please contact an administrator to verify your identity.</div>
+    <div class="back"><a href="/">← Back to Login</a></div>
+  </div>
+</div>
+</body>
+</html>

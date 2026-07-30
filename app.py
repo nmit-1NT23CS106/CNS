@@ -1,15 +1,16 @@
 from flask import Flask, render_template, request, redirect, session, jsonify
 import sqlite3
 import random
-import hashlib
+import os
+import secrets
+from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from sklearn.ensemble import IsolationForest
 import numpy as np
 
 # ─────────────────────────────────────────
-# BRUTE FORCE TRACKER (in-memory)
+# BRUTE FORCE TRACKER (persisted in DB — see login_attempts table)
 # ─────────────────────────────────────────
-failed_attempts = {}  # username -> {'count': N, 'locked_until': datetime}
 MAX_ATTEMPTS = 3
 LOCKOUT_MINUTES = 5
 
@@ -18,43 +19,56 @@ SECURITY_QUESTIONS = {
     "bob":     {"question": "What is your mother's maiden name?", "answer": "sharma"},
     "charlie": {"question": "What was your first school name?",   "answer": "greenwood"},
 }
-def delete_bangalore_charlie():
-    conn = db()
-    c = conn.cursor()
-
-    c.execute("""
-        DELETE FROM logins
-        WHERE username = 'charlie'
-        AND location LIKE '%Bengaluru%'
-    """)
-
-    conn.commit()
-    conn.close()
-    print("✅ Deleted all Bengaluru logs for Charlie")
 
 def is_locked(username):
-    if username not in failed_attempts:
+    conn = db()
+    c = conn.cursor()
+    c.execute("SELECT count, locked_until FROM login_attempts WHERE username=?", (username,))
+    row = c.fetchone()
+    conn.close()
+    if not row or not row['locked_until']:
         return False, 0
-    data = failed_attempts[username]
-    if data.get('locked_until') and datetime.now() < data['locked_until']:
-        remaining = int((data['locked_until'] - datetime.now()).total_seconds() / 60) + 1
+    locked_until = datetime.fromisoformat(row['locked_until'])
+    if datetime.now() < locked_until:
+        remaining = int((locked_until - datetime.now()).total_seconds() / 60) + 1
         return True, remaining
     return False, 0
 
 def record_failure(username):
-    if username not in failed_attempts:
-        failed_attempts[username] = {'count': 0, 'locked_until': None}
-    failed_attempts[username]['count'] += 1
-    if failed_attempts[username]['count'] >= MAX_ATTEMPTS:
-        failed_attempts[username]['locked_until'] = datetime.now() + timedelta(minutes=LOCKOUT_MINUTES)
-        failed_attempts[username]['count'] = 0
+    conn = db()
+    c = conn.cursor()
+    c.execute("SELECT count FROM login_attempts WHERE username=?", (username,))
+    row = c.fetchone()
+    count = (row['count'] if row else 0) + 1
+    locked_until = None
+    if count >= MAX_ATTEMPTS:
+        locked_until = (datetime.now() + timedelta(minutes=LOCKOUT_MINUTES)).isoformat()
+        count = 0
+    c.execute("""INSERT INTO login_attempts(username, count, locked_until) VALUES(?,?,?)
+                 ON CONFLICT(username) DO UPDATE SET count=excluded.count, locked_until=excluded.locked_until""",
+              (username, count, locked_until))
+    conn.commit()
+    conn.close()
+
+def get_attempt_count(username):
+    conn = db()
+    c = conn.cursor()
+    c.execute("SELECT count FROM login_attempts WHERE username=?", (username,))
+    row = c.fetchone()
+    conn.close()
+    return row['count'] if row else 0
 
 def clear_failures(username):
-    if username in failed_attempts:
-        failed_attempts[username] = {'count': 0, 'locked_until': None}
+    conn = db()
+    c = conn.cursor()
+    c.execute("DELETE FROM login_attempts WHERE username=?", (username,))
+    conn.commit()
+    conn.close()
 
 app = Flask(__name__)
-app.secret_key = "cns_digital_twin_2026"
+# In production, set the SECRET_KEY environment variable so sessions
+# survive restarts. Falls back to a random key for local/demo use.
+app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
 # ─────────────────────────────────────────
 # DATABASE
@@ -83,6 +97,11 @@ def setup():
         risk INTEGER,
         action TEXT
     )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS login_attempts(
+        username TEXT PRIMARY KEY,
+        count INTEGER,
+        locked_until TEXT
+    )""")
     conn.commit()
     conn.close()
 
@@ -97,9 +116,9 @@ def seed_demo():
 
     # Create demo users
     users = [
-        ("alice",   hashlib.sha256("alice123".encode()).hexdigest()),
-        ("bob",     hashlib.sha256("bob123".encode()).hexdigest()),
-        ("charlie", hashlib.sha256("charlie123".encode()).hexdigest()),
+        ("alice",   generate_password_hash("alice123")),
+        ("bob",     generate_password_hash("bob123")),
+        ("charlie", generate_password_hash("charlie123")),
     ]
     for u, p in users:
         try:
@@ -231,7 +250,7 @@ def home():
 def signup():
     if request.method == 'POST':
         u = request.form['username']
-        p = hashlib.sha256(request.form['password'].encode()).hexdigest()
+        p = generate_password_hash(request.form['password'])
         conn = db()
         c = conn.cursor()
         try:
@@ -247,7 +266,6 @@ def signup():
 @app.route('/login', methods=['POST'])
 def login():
     u = request.form['username']
-    demo_mode = 'normal'  # no longer used, kept for compatibility
 
     # ── BRUTE FORCE CHECK ──
     locked, remaining = is_locked(u)
@@ -256,14 +274,14 @@ def login():
             error=f"🔒 Account LOCKED! Too many failed attempts. Try again in {remaining} min.",
             locked=True)
 
-    p = hashlib.sha256(request.form['password'].encode()).hexdigest()
     conn = db()
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE username=? AND password=?", (u, p))
-    if not c.fetchone():
+    c.execute("SELECT * FROM users WHERE username=?", (u,))
+    user_row = c.fetchone()
+    if not user_row or not check_password_hash(user_row['password'], request.form['password']):
         conn.close()
         record_failure(u)
-        attempts = failed_attempts.get(u, {}).get('count', 1)
+        attempts = get_attempt_count(u)
         remaining_tries = MAX_ATTEMPTS - attempts
         if remaining_tries <= 0:
             return render_template("login.html",
@@ -324,9 +342,12 @@ def login():
             return render_template("security_question.html",
                 username=u, risk=risk,
                 question=sq['question'], factors=factors)
-        # No security question set — hard block
+        # No security question on file for this user — hard block
         return render_template("blocked.html", username=u, risk=risk, factors=factors)
+
+    if action == "OTP Required":
         otp = str(random.randint(1000, 9999))
+        print(f"[DEMO] OTP for {u}: {otp}")  # simulates sending via SMS/email
         session['otp'] = otp
         session['user'] = u
         session['pending_data'] = {
@@ -382,5 +403,4 @@ def logout():
     return redirect("/")
 
 if __name__ == "__main__":
-    delete_bangalore_charlie()
-    app.run(debug=True)  
+    app.run(debug=True)
